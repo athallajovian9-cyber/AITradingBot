@@ -1,0 +1,8 @@
+[package]
+name = "botcore"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "botcore"
+path = "src/lib.rs"

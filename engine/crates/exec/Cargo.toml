@@ -1,0 +1,7 @@
+[package]
+name = "exec"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+botcore = { path = "../core" }

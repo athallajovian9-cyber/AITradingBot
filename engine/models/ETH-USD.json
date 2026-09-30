@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "trained_on": "ETH-USD 2024-09-30..2026-09-30",
+ "bars": 731,
+ "horizon": 10,
+ "features": [
+  "1-bar return",
+  "5-bar return",
+  "20-bar return",
+  "RSI(14) position",
+  "MACD histogram",
+  "Bollinger %B",
+  "SMA20-50 trend",
+  "Volatility ratio",
+  "Volume z-score",
+  "Range position"
+ ],
+ "model": {
+  "kind": "logistic",
+  "weights": [
+   -0.02720131034280657,
+   0.04449473236668639,
+   -0.007837969013701896,
+   0.007576730258882793,
+   -0.027768008303003043,
+   -0.03367984201158559,
+   0.029030407292738963,
+   -0.3911470575019973,
+   -0.0710419429628163,
+   -0.028098905640903078
+  ],
+  "bias": -0.2390742380262479
+ }
+}

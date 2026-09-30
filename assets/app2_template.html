@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Trading Bot — Advanced Honest Backtester</title>
+<style>
+  :root{
+    --bg:#080c13; --panel:#111a26; --panel2:#0c141e; --line:#1f2c3d;
+    --fg:#e6eef9; --dim:#8698ae; --acc:#4f9dff; --good:#22c98a; --bad:#ff5b52;
+    --warn:#ffb454; --gold:#ffd166; --purple:#a97bff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:13.5px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px}
+  header{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+  h1{margin:0 0 4px;font-size:20px}
+  .sub{color:var(--dim);font-size:12.5px;max-width:820px}
+  .sub b{color:var(--gold)}
+  .legend{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 13px;font-size:12px;color:var(--dim);line-height:1.75;margin-bottom:14px}
+  .legend b{color:var(--fg)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .tab{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+    color:var(--dim);cursor:pointer;font:inherit;font-size:13px}
+  .tab:hover{color:var(--fg)}
+  .tab.on{background:var(--acc);color:#04121f;border-color:var(--acc);font-weight:700}
+  .grid{display:grid;grid-template-columns:318px 1fr;gap:16px;align-items:start}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .panel h2{margin:0 0 12px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .panel h3{margin:0 0 10px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  label{display:block;font-size:11.5px;color:var(--dim);margin:11px 0 3px}
+  label:first-of-type{margin-top:0}
+  select,input[type=number]{width:100%;padding:7px;border-radius:7px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--fg);font:inherit;font-size:13px}
+  input[type=range]{width:100%;accent-color:var(--acc);margin:3px 0 0}
+  .val{float:right;color:var(--acc);font-variant-numeric:tabular-nums}
+  button.go{width:100%;margin-top:14px;padding:11px;border:none;border-radius:8px;
+    background:var(--acc);color:#04121f;font:inherit;font-weight:700;cursor:pointer}
+  button.go:hover{filter:brightness(1.1)}
+  button.go.alt{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:400}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--dim)}
+  .chk input{accent-color:var(--acc)}
+  #verdict{border-radius:11px;padding:13px 15px;margin-bottom:14px;border:1px solid var(--line);
+    background:var(--panel);font-size:14px;line-height:1.6}
+  #verdict.win{border-color:var(--good);background:rgba(34,201,138,.09)}
+  #verdict.lose{border-color:var(--bad);background:rgba(255,91,82,.08)}
+  #verdict.warn{border-color:var(--warn);background:rgba(255,180,84,.08)}
+  #verdict .big{font-weight:700;font-size:16px;display:block;margin-bottom:3px}
+  .metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+  @media(max-width:1200px){.metrics{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:700px){.metrics{grid-template-columns:repeat(2,1fr)}}
+  .m{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+  .m .k{font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m .v{font-size:15px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .good{color:var(--good)} .bad{color:var(--bad)} .mut{color:var(--dim)} .gold{color:var(--gold)}
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:13px;margin-bottom:14px}
+  canvas{width:100%;display:block}
+  .hint{color:var(--dim);font-size:11.5px;margin-top:9px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+  th:first-child,td:first-child{text-align:left}
+  tr:hover td{background:rgba(79,157,255,.06)}
+  .scroll{max-height:330px;overflow:auto}
+  .wrow{display:grid;grid-template-columns:132px 1fr 58px;gap:9px;align-items:center;
+    margin-bottom:6px;font-size:11.5px}
+  .wbar{height:8px;background:var(--panel2);border-radius:4px;position:relative;overflow:hidden}
+  .wbar i{position:absolute;top:0;bottom:0;background:var(--acc);border-radius:3px}
+  .wbar i.neg{background:var(--bad)}
+  .wval{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+  #log{background:var(--panel2);border:1px solid var(--line);border-radius:9px;height:132px;
+    overflow-y:auto;font:11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:9px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.two{grid-template-columns:1fr}}
+  .pill{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10.5px;
+    background:var(--panel2);border:1px solid var(--line);color:var(--dim);margin-left:5px}
+  .loading{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI Trading Bot &mdash; Advanced Honest Backtester</h1>
+      <p class="sub">Real prices with full OHLCV. Wilder RSI, ATR, MACD, Bollinger, realised
+        volatility and volume z-scores. A real neural net with backprop alongside linear
+        baselines. Volatility targeting, Kelly sizing, ATR stops. Walk-forward validation
+        with an embargo &mdash; the only result that means anything is the out-of-sample one.
+        <b>Costs charged on every fill, benchmark always on the same chart.</b>
+        <b>Nothing here predicts the future; it measures the past.</b></p>
+    </div>
+    <div style="font-size:11.5px;color:var(--dim);text-align:right" id="dataInfo"></div>
+  </header>
+
+  <div class="legend">
+    <b>Buy &amp; hold</b> is always drawn on the same chart, with the same entry cost and the
+    same starting capital &mdash; a return only means something next to it.
+    <b>Out-of-sample</b> is the only result worth trusting: the walk-forward tab refits on the
+    past and trades the future, with an embargo so no label leaks across the boundary.
+    <b>Overfitting</b> is measured as the gap between in-sample and out-of-sample performance,
+    and shown rather than hidden. Costs &mdash; commission, spread and slippage &mdash; are
+    charged on every fill.
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="grid">
+    <!-- ================= config ================= -->
+    <div class="panel">
+      <h2>Configuration</h2>
+      <div id="cfgBody"></div>
+      <button class="go" id="run">Run</button>
+      <button class="go alt" id="models">Compare models</button>
+      <div id="cfgHint" class="hint"></div>
+    </div>
+
+    <!-- ================= results ================= -->
+    <div id="out"></div>
+  </div>
+</div>
+
+<script>/*__ENGINE__*/</script>
+<script>/*__DATA__*/</script>
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const pct = x => (x*100 >= 0 ? '+' : '') + (x*100).toFixed(2) + '%';
+const money = x => (x<0?'-':'') + '$' + Math.abs(x).toLocaleString(undefined,{maximumFractionDigits:0});
+const num = (x,d) => (x==null||!isFinite(x)) ? '–' : x.toFixed(d==null?2:d);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+const SYMS = Object.keys(DATA);
+const COLORS = ['#4f9dff','#22c98a','#ffb454','#a97bff','#ff5b52','#22d3ee',
+                '#f472b6','#facc15','#84cc16','#fb923c'];
+
+/* ------------------------------------------------------------ little UI */
+let logEl;
+function log(msg, color){
+  if (!logEl){ logEl = document.getElementById('log'); if (!logEl) return; }
+  const d = document.createElement('div');
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  if (color) d.style.color = color;
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+}
+
+function metricsGrid(m, extra){
+  const cls = v => v >= 0 ? 'good' : 'bad';
+  const rows = [
+    ['Return', pct(m.totalRet), cls(m.totalRet)],
+    ['Buy & hold', pct(m.benchRet), cls(m.benchRet)],
+    ['Excess', pct(m.excess), cls(m.excess)],
+    ['CAGR', pct(m.cagr), cls(m.cagr)],
+    ['Sharpe', num(m.sharpe), cls(m.sharpe)],
+    ['Sortino', num(m.sortino), cls(m.sortino)],
+    ['Calmar', num(m.calmar), cls(m.calmar)],
+    ['Max DD', pct(m.maxDD), 'bad'],
+    ['DD duration', (m.maxDDDuration||0) + ' bars', 'mut'],
+    ['Volatility', pct(m.volatility), 'mut'],
+    ['Beta', num(m.beta), 'mut'],
+    ['Alpha (ann)', pct(m.alphaAnn), cls(m.alphaAnn)],
+    ['Info ratio', num(m.informationRatio), cls(m.informationRatio)],
+    ['Trades', String(m.trades), 'mut'],
+    ['Hit rate', (m.hitRate*100).toFixed(1)+'%', m.hitRate>0.5?'good':'bad'],
+    ['Profit factor', isFinite(m.profitFactor)?num(m.profitFactor):'∞', m.profitFactor>1?'good':'bad'],
+    ['Exposure', (m.exposure*100).toFixed(0)+'%', 'mut'],
+    ['Costs', money(m.fees), 'mut'],
+    ['VaR 95 (1d)', pct(m.var95), 'mut'],
+    ['Best / worst day', pct(m.bestDay)+' / '+pct(m.worstDay), 'mut'],
+  ];
+  return '<div class="metrics">' + rows.map(([k,v,c]) =>
+    '<div class="m"><div class="k">'+k+'</div><div class="v '+c+'">'+v+'</div></div>').join('') + '</div>';
+}
+
+/* ------------------------------------------------------------- charts */
+function setupCanvas(cv, H){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.clientWidth || 700;
+  cv.width = Math.floor(W*dpr); cv.height = Math.floor(H*dpr);
+  cv.style.height = H + 'px';
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+  return { c, W, H };
+}
+
+function drawLines(cv, series, opts){
+  opts = opts || {};
+  const H = opts.height || 300;
+  const { c, W } = setupCanvas(cv, H);
+  const padL = opts.padL || 70, padR = 12, padT = opts.legend === false ? 10 : 22, padB = 24;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  let lo = Infinity, hi = -Infinity, n = 0;
+  for (const s of series){
+    for (let i = 0; i < s.data.length; i++){
+      const v = s.data[i];
+      if (!isFinite(v)) continue;
+      lo = Math.min(lo, v); hi = Math.max(hi, v);
+    }
+    n = Math.max(n, s.data.length);
+  }
+  if (!isFinite(lo)){ lo = 0; hi = 1; }
+  if (opts.logY && lo > 0){ /* keep linear for clarity; noted in the UI */ }
+  const pad = (hi-lo)*0.06 || Math.abs(hi||1)*0.1 || 1;
+  lo -= pad; hi += pad;
+  const X = i => padL + (n<=1?0:(i/(n-1))*iw);
+  const Y = v => padT + (1 - (v-lo)/(hi-lo))*ih;
+
+  // horizontal grid
+  c.strokeStyle = '#18232f'; c.fillStyle = '#8698ae';
+  c.font = '10.5px ui-monospace,monospace'; c.textAlign = 'right';
+  for (let k = 0; k <= 4; k++){
+    const v = lo + (hi-lo)*k/4, y = Y(v);
+    c.beginPath(); c.moveTo(padL,y); c.lineTo(W-padR,y); c.stroke();
+    c.fillText('$' + Math.round(v).toLocaleString(), padL-7, y+3.5);
+  }
+  // start line
+  if (opts.startLine != null && isFinite(opts.startLine)){
+    c.strokeStyle = '#25344a'; c.setLineDash([4,4]);
+    c.beginPath(); c.moveTo(padL, Y(opts.startLine)); c.lineTo(W-padR, Y(opts.startLine)); c.stroke();
+    c.setLineDash([]);
+  }
+  // date axis
+  if (opts.dates){
+    c.textAlign = 'center'; c.fillStyle = '#8698ae';
+    for (let k = 0; k <= 4; k++){
+      const i = Math.round((n-1)*k/4);
+      const di = Math.round(i * (opts.dates.length-1) / Math.max(1,n-1));
+      c.fillText(opts.dates[di] || '', X(i), H-7);
+    }
+  }
+  // series
+  for (const s of series){
+    c.strokeStyle = s.color; c.lineWidth = s.width || 2;
+    c.beginPath();
+    let started = false;
+    for (let i = 0; i < s.data.length; i++){
+      const v = s.data[i];
+      if (!isFinite(v)){ started = false; continue; }
+      const x = X(i), y = Y(v);
+      if (!started){ c.moveTo(x,y); started = true; } else c.lineTo(x,y);
+    }
+    c.stroke();
+  }
+  // legend
+  if (opts.legend !== false){
+    c.textAlign = 'left'; c.font = '11px system-ui,sans-serif';
+    let x = padL;
+    for (const s of series){
+      c.fillStyle = s.color; c.fillRect(x, 5, 11, 3);
+      c.fillStyle = '#e6eef9'; c.fillText(s.label, x+15, 9.5);
+      x += 24 + c.measureText(s.label).width + 14;
+    }
+  }
+  return { c, W, H, lo, hi, X, Y, padL, padT, ih, iw, n };
+}
+
+function drawHistogram(cv, values, opts){
+  opts = opts || {};
+  const H = opts.height || 240;
+  const { c, W } = setupCanvas(cv, H);
+  const padL = 12, padR = 12, padT = 18, padB = 26;
+  const iw = W-padL-padR, ih = H-padT-padB;
+  const lo = Math.min(...values), hi = Math.max(...values);
+  const bins = opts.bins || 46;
+  const w = (hi-lo)/bins || 1;
+  const counts = new Array(bins).fill(0);
+  for (const v of values){
+    const b = Math.min(bins-1, Math.max(0, Math.floor((v-lo)/w)));
+    counts[b]++;
+  }
+  const mx = Math.max(...counts);
+  for (let b = 0; b < bins; b++){
+    const x = padL + (b/bins)*iw, bw = iw/bins - 1;
+    const h = (counts[b]/mx)*ih;
+    c.fillStyle = '#4f9dff'; c.globalAlpha = 0.75;
+    c.fillRect(x, padT+ih-h, bw, h);
+    c.globalAlpha = 1;
+  }
+  // markers
+  const mark = (v, col, label) => {
+    if (!isFinite(v)) return;
+    const x = padL + ((v-lo)/(hi-lo||1))*iw;
+    c.strokeStyle = col; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x, padT-4); c.lineTo(x, padT+ih); c.stroke();
+    c.fillStyle = col; c.font = '10.5px system-ui,sans-serif'; c.textAlign = 'center';
+    c.fillText(label, x, padT-7);
+  };
+  mark(opts.actual, '#ffd166', 'actual');
+  mark(opts.p05, '#ff5b52', 'p5');
+  mark(opts.p95, '#22c98a', 'p95');
+  c.fillStyle = '#8698ae'; c.font = '10.5px ui-monospace,monospace'; c.textAlign = 'left';
+  c.fillText('$' + Math.round(lo).toLocaleString(), padL, H-8);
+  c.textAlign = 'right';
+  c.fillText('$' + Math.round(hi).toLocaleString(), W-padR, H-8);
+}
+
+function influencePanel(vals, names){
+  if (!vals || !vals.length) return '';
+  let mx = 0.0001;
+  for (const v of vals) mx = Math.max(mx, Math.abs(v));
+  return vals.map((v,i) => {
+    const pc = Math.min(50, Math.abs(v)/mx*50);
+    const cls = v >= 0 ? '' : 'neg';
+    return '<div class="wrow"><span>'+esc(names[i]||('f'+i))+'</span>' +
+      '<span class="wbar"><i class="'+cls+'" style="' +
+      (v>=0 ? 'left:50%;width:'+pc+'%' : 'left:'+(50-pc)+'%;width:'+pc+'%') + '"></i></span>' +
+      '<span class="wval">'+v.toFixed(3)+'</span></div>';
+  }).join('');
+}
+
+/* --------------------------------------------------------------- config */
+const TABS = [
+  { id:'backtest', label:'Backtest' },
+  { id:'walkforward', label:'Walk-forward' },
+  { id:'portfolio', label:'Portfolio' },
+  { id:'optimize', label:'Optimise' },
+  { id:'montecarlo', label:'Monte Carlo' },
+  { id:'models', label:'Models' },
+];
+let tab = 'backtest';
+let busy = false;
+
+function cfg(){
+  const v = id => $(id) ? $(id).value : null;
+  return {
+    asset: v('asset') || SYMS[0],
+    model: v('model') || 'logistic',
+    horizon: +v('horizon'),
+    lr: +v('lr')/1000,
+    thresh: +v('thresh')/100,
+    sizing: v('sizing') || 'full',
+    targetVol: +v('targetVol')/100,
+    allowShort: $(('short')) ? $('short').checked : false,
+    stopAtr: +v('stopAtr'),
+    trailAtr: +v('trailAtr'),
+    tpAtr: +v('tpAtr'),
+    maxHold: +v('maxHold'),
+    commissionBps: +v('comm'),
+    spreadBps: +v('spread'),
+    slippageBps: +v('slip'),
+    impactBps: +v('impact'),
+    trainBars: +v('trainBars'),
+    testBars: +v('testBars'),
+    cash: 10000,
+    warmBars: 60,
+  };
+}
+
+function renderCfg(){
+  const isWF = tab === 'walkforward';
+  const isPF = tab === 'portfolio';
+  const isOpt = tab === 'optimize';
+  const isMC = tab === 'montecarlo';
+  const isMod = tab === 'models';
+  let h = '';
+
+  if (isPF){
+    h += '<label>Assets to hold</label><div style="max-height:190px;overflow:auto;margin-bottom:6px">';
+    for (const s of SYMS){
+      const d = DATA[s];
+      const ch = (d.closes[d.closes.length-1]/d.closes[0]-1)*100;
+      h += '<label class="chk" style="margin:5px 0"><input type="checkbox" class="pfAsset" value="'+s+'"' +
+        (['SPY','GLD','TLT','BTC-USD'].includes(s)?' checked':'') + '>' +
+        esc(s) + ' <span class="mut">' + (ch>=0?'+':'') + ch.toFixed(0) + '%</span></label>';
+    }
+    h += '</div>';
+  } else {
+    h += '<label>Asset</label><select id="asset">';
+    for (const s of SYMS){
+      const d = DATA[s];
+      const ch = (d.closes[d.closes.length-1]/d.closes[0]-1)*100;
+      h += '<option value="'+s+'">'+esc(s)+' — '+esc(d.name)+' ('+(ch>=0?'+':'')+ch.toFixed(0)+'%)</option>';
+    }
+    h += '</select>';
+  }
+
+  if (!isPF && !isMod){
+    h += '<label>Model</label><select id="model">' +
+      '<option value="logistic">Logistic regression (online)</option>' +
+      '<option value="mlp">Neural net — 8 hidden units, backprop</option>' +
+      '<option value="linear">Linear regression</option></select>';
+  }
+
+  h += '<label>Forecast horizon <span class="val" id="horizonV"></span></label>' +
+       '<input type="range" id="horizon" min="1" max="40" value="'+(isMC?20:10)+'">' +
+       '<label>Learning rate <span class="val" id="lrV"></span></label>' +
+       '<input type="range" id="lr" min="1" max="200" value="50">' +
+       '<label>Confidence to enter <span class="val" id="threshV"></span></label>' +
+       '<input type="range" id="thresh" min="50" max="80" value="55">' +
+       '<label>Position sizing</label><select id="sizing">' +
+       '<option value="full">Full capital</option>' +
+       '<option value="voltarget">Volatility target</option>' +
+       '<option value="kelly">Half Kelly</option></select>' +
+       '<label>Target volatility <span class="val" id="targetVolV"></span></label>' +
+       '<input type="range" id="targetVol" min="5" max="60" value="15">';
+
+  if (!isMod){
+    h += '<label>ATR stop (x ATR, 0 = off) <span class="val" id="stopAtrV"></span></label>' +
+         '<input type="range" id="stopAtr" min="0" max="6" value="0">' +
+         '<label>Trailing stop (x ATR, 0 = off) <span class="val" id="trailAtrV"></span></label>' +
+         '<input type="range" id="trailAtr" min="0" max="6" value="0">' +
+         '<label>Take profit (x ATR, 0 = off) <span class="val" id="tpAtrV"></span></label>' +
+         '<input type="range" id="tpAtr" min="0" max="8" value="0">' +
+         '<label>Max hold (bars, 0 = no limit) <span class="val" id="maxHoldV"></span></label>' +
+         '<input type="range" id="maxHold" min="0" max="60" value="0">';
+  }
+
+  h += '<label>Commission <span class="val" id="commV"></span></label>' +
+       '<input type="range" id="comm" min="0" max="40" value="10">' +
+       '<label>Spread <span class="val" id="spreadV"></span></label>' +
+       '<input type="range" id="spread" min="0" max="40" value="5">' +
+       '<label>Slippage <span class="val" id="slipV"></span></label>' +
+       '<input type="range" id="slip" min="0" max="40" value="5">' +
+       '<label>Market impact <span class="val" id="impactV"></span></label>' +
+       '<input type="range" id="impact" min="0" max="60" value="0">';
+
+  const sh = '<label class="chk"><input type="checkbox" id="short">Allow short selling</label>';
+
+  if (isWF){
+    h += '<label>Training window (bars) <span class="val" id="trainBarsV"></span></label>' +
+         '<input type="range" id="trainBars" min="100" max="350" value="250">' +
+         '<label>Test window (bars) <span class="val" id="testBarsV"></span></label>' +
+         '<input type="range" id="testBars" min="20" max="120" value="63">' + sh;
+  } else if (!isPF){
+    h += sh;
+  }
+
+  $('cfgBody').innerHTML = h;
+  $('run').textContent = {backtest:'Run backtest', walkforward:'Run walk-forward',
+    portfolio:'Run portfolio', optimize:'Run optimisation', montecarlo:'Run Monte Carlo',
+    models:'Compare all models'}[tab];
+  $('run').style.display = (tab === 'models') ? 'none' : 'block';
+  bindLabels();
+}
+
+function bindLabels(){
+  const sync = () => {
+    const set = (id, txt) => { const e = $(id+'V'); if (e) e.textContent = txt; };
+    if ($('horizon')) set('horizon', $('horizon').value + ' bars');
+    if ($('lr')) set('lr', (+$('lr').value/1000).toFixed(3));
+    if ($('thresh')) set('thresh', $('thresh').value + '%');
+    if ($('targetVol')) set('targetVol', $('targetVol').value + '%');
+    if ($('stopAtr')) set('stopAtr', $('stopAtr').value === '0' ? 'off' : $('stopAtr').value + 'x');
+    if ($('trailAtr')) set('trailAtr', $('trailAtr').value === '0' ? 'off' : $('trailAtr').value + 'x');
+    if ($('tpAtr')) set('tpAtr', $('tpAtr').value === '0' ? 'off' : $('tpAtr').value + 'x');
+    if ($('maxHold')) set('maxHold', $('maxHold').value === '0' ? 'none' : $('maxHold').value + ' bars');
+    if ($('comm')) set('comm', $('comm').value + ' bps');
+    if ($('spread')) set('spread', $('spread').value + ' bps');
+    if ($('slip')) set('slip', $('slip').value + ' bps');
+    if ($('impact')) set('impact', $('impact').value === '0' ? 'off' : $('impact').value + ' bps');
+    if ($('trainBars')) set('trainBars', $('trainBars').value + ' bars');
+    if ($('testBars')) set('testBars', $('testBars').value + ' bars');
+  };
+  sync();
+  ['horizon','lr','thresh','targetVol','stopAtr','trailAtr','tpAtr','maxHold',
+   'comm','spread','slip','impact','trainBars','testBars'].forEach(id => {
+    const e = $(id); if (e) e.addEventListener('input', sync);
+  });
+}
+
+/* ================================================================ TABS */
+function renderTabs(){
+  $('tabs').innerHTML = TABS.map(t =>
+    '<button class="tab '+ (t.id===tab?'on':'') +'" data-t="'+t.id+'">'+t.label+'</button>').join('');
+  $('tabs').querySelectorAll('.tab').forEach(b =>
+    b.addEventListener('click', () => { tab = b.dataset.t; renderTabs(); renderCfg(); resetOut(); }));
+}
+
+function resetOut(){
+  const blurb = {
+    backtest:'Run a single backtest. Equity, benchmark and every metric, on one asset.',
+    walkforward:'Repeatedly fit on the past and trade the NEXT window untouched. Everything you see is out-of-sample.',
+    portfolio:'Run the same strategy across several assets at once and combine the equity. Compare against equal-weight buy-and-hold.',
+    optimize:'Grid-search every setting in-sample, then report the same settings out-of-sample. The GAP between them is overfitting.',
+    montecarlo:'Resample the strategy\u2019s own returns thousands of times to show how much of the result could be luck.',
+    models:'Logistic vs linear vs neural net on identical data and costs.',
+  }[tab];
+  $('out').innerHTML = '<div id="verdict">'+blurb+'</div>' +
+    (tab==='backtest'||tab==='walkforward'||tab==='montecarlo' ?
+      '<div class="chartbox"><canvas id="chart" height="300"></canvas>' +
+      '<div class="hint" id="chartHint"></div></div>' : '') +
+    '<div class="two"><div class="panel"><h3>Feature influence</h3><div id="infl">' +
+      '<span class="mut">Run a test to see which inputs the model leaned on.</span></div></div>' +
+    '<div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+}
+
+/* ============================================================== actions */
+function getAsset(){
+  const a = $(('asset')) ? $('asset').value : SYMS[0];
+  return { sym: a, d: DATA[a] };
+}
+
+function runBacktest(){
+  const { sym, d } = getAsset();
+  const c = cfg();
+  log('Backtest ' + sym + ' — ' + c.model + ', horizon ' + c.horizon + ' bars', '#4f9dff');
+  const t0 = performance.now();
+  const r = ENGINE.backtest(d, c);
+  const ms = performance.now() - t0;
+  const win = r.beatBench;
+  $('out').innerHTML =
+    '<div id="verdict" class="'+(win?'win':'lose')+'"><span class="big">' +
+      (win ? '\u2705 Beat buy-and-hold' : '\u274C Lost to buy-and-hold') + '</span>' +
+      'Bot ' + pct(r.totalRet) + ' vs holding ' + pct(r.benchRet) +
+      ' — excess <b>' + pct(r.excess) + '</b>. ' + r.trades.length + ' trades, ' +
+      money(r.fees) + ' costs, ' + (r.exposure*100).toFixed(0) + '% of the time in the market.' +
+      ' <span class="mut">(' + ms.toFixed(0) + ' ms)</span></div>' +
+    metricsGrid(r) +
+    '<div class="chartbox"><canvas id="chart" height="300"></canvas>' +
+    '<div class="hint" id="chartHint"></div></div>' +
+    '<div class="two"><div class="panel"><h3>Feature influence</h3><div id="infl">' +
+      influencePanel(r.finalWeights, r.featureNames) + '</div></div>' +
+    '<div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+  log('  ' + (win?'BEAT':'lost') + '  excess ' + pct(r.excess) + '  Sharpe ' + num(r.sharpe),
+      win ? '#22c98a' : '#ff5b52');
+  const color = COLORS[SYMS.indexOf(sym) % COLORS.length];
+  drawLines($('chart'), [
+    { data: r.bench, color: '#7a8ba3', width: 1.6, label: 'buy & hold' },
+    { data: r.equity, color, width: 2.2, label: 'bot' },
+  ], { dates: d.dates, startLine: 10000 });
+  $('chartHint').textContent = 'Both start at ' + money(10000) + ' on the same bar with the ' +
+    'same entry cost. ' + d.source + ', ' + d.dates[0] + ' to ' + d.dates[d.dates.length-1] + '.';
+}
+
+function runWalkForward(){
+  const { sym, d } = getAsset();
+  const c = cfg();
+  log('Walk-forward ' + sym + ' — train ' + c.trainBars + ', test ' + c.testBars + ', horizon ' + c.horizon, '#4f9dff');
+  const t0 = performance.now();
+  const r = ENGINE.walkForward(d, c);
+  const ms = performance.now() - t0;
+  const win = r.beatBench;
+  const rows = r.windows.map((w,i) =>
+    '<tr><td>'+i+'</td><td>'+w.from+'</td><td>'+w.trainEnd+'</td><td>'+w.embargoEnd+'</td>' +
+    '<td>'+w.testEnd+'</td><td>'+(isFinite(w.trainAcc)?(w.trainAcc*100).toFixed(1)+'%':'–')+'</td></tr>').join('');
+  $('out').innerHTML =
+    '<div id="verdict" class="'+(win?'win':'lose')+'"><span class="big">' +
+      (win ? '\u2705 Out-of-sample: beat buy-and-hold' : '\u274C Out-of-sample: lost to buy-and-hold') +
+      '</span>' + r.windows.length + ' walk-forward windows, ' + r.oosBars +
+      ' bars actually traded out-of-sample. Result ' + pct(r.totalRet) + ' vs holding ' +
+      pct(r.benchRet) + ' — excess <b>' + pct(r.excess) + '</b>. ' +
+      '<span class="mut">This is the honest number: every bar was traded with a model ' +
+      'fitted only on data before it. (' + ms.toFixed(0) + ' ms)</span></div>' +
+    metricsGrid(r) +
+    '<div class="chartbox"><canvas id="chart" height="300"></canvas>' +
+    '<div class="hint" id="chartHint">Equity is carried flat between test windows — no ' +
+    'strategy is running there.</div></div>' +
+    '<div class="two"><div class="panel"><h3>Windows</h3><div class="scroll"><table>' +
+      '<tr><th>#</th><th>from</th><th>train ends</th><th>embargo ends</th><th>test ends</th><th>train acc</th></tr>' +
+      rows + '</table></div><div class="hint">The embargo is at least the forecast horizon, so a ' +
+      'label whose outcome lands inside the test window is never trained on.</div></div>' +
+    '<div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+  log('  ' + r.windows.length + ' windows, ' + r.oosBars + ' OOS bars, excess ' + pct(r.excess),
+      win ? '#22c98a' : '#ff5b52');
+  const color = COLORS[SYMS.indexOf(sym) % COLORS.length];
+  drawLines($('chart'), [
+    { data: r.bench, color: '#7a8ba3', width: 1.6, label: 'buy & hold' },
+    { data: r.equity, color, width: 2.2, label: 'bot (out-of-sample)' },
+  ], { dates: d.dates, startLine: 10000 });
+}
+
+function runPortfolio(){
+  const picked = [...document.querySelectorAll('.pfAsset:checked')].map(e => e.value);
+  if (!picked.length){ log('Pick at least one asset.', '#ffb454'); return; }
+  const c = cfg();
+  const assets = picked.map(s => Object.assign({ symbol: s }, DATA[s]));
+  log('Portfolio of ' + picked.join(', ') + ' — ' + c.model + ', horizon ' + c.horizon, '#4f9dff');
+  const t0 = performance.now();
+  const r = ENGINE.portfolio(assets, c);
+  const ms = performance.now() - t0;
+  const win = r.beatBench;
+  const parts = r.parts.map((p,i) =>
+    '<tr><td>'+esc(p.name)+'</td><td class="'+(p.totalRet>=0?'good':'bad')+'">'+pct(p.totalRet)+'</td>' +
+    '<td class="mut">'+pct(p.benchRet)+'</td>' +
+    '<td class="'+(p.totalRet-p.benchRet>=0?'good':'bad')+'">'+pct(p.totalRet-p.benchRet)+'</td></tr>').join('');
+  $('out').innerHTML =
+    '<div id="verdict" class="'+(win?'win':'lose')+'"><span class="big">' +
+      (win ? '\u2705 Portfolio beat equal-weight holding' : '\u274C Portfolio lost to equal-weight holding') +
+      '</span>' + picked.length + ' assets, capital split equally. Portfolio ' + pct(r.totalRet) +
+      ' vs holding ' + pct(r.benchRet) + ' — excess <b>' + pct(r.excess) + '</b>.' +
+      ' <span class="mut">(' + ms.toFixed(0) + ' ms)</span></div>' +
+    metricsGrid(r) +
+    '<div class="chartbox"><canvas id="chart" height="300"></canvas>' +
+    '<div class="hint">Portfolio equity is the sum of each asset trading independently; the ' +
+    'benchmark is the same capital split equally and simply held.</div></div>' +
+    '<div class="two"><div class="panel"><h3>Per asset</h3><table>' +
+      '<tr><th>asset</th><th>bot</th><th>hold</th><th>excess</th></tr>' + parts +
+      '</table></div><div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+  log('  portfolio excess ' + pct(r.excess) + '  Sharpe ' + num(r.sharpe), win?'#22c98a':'#ff5b52');
+  drawLines($('chart'), [
+    { data: r.bench, color: '#7a8ba3', width: 1.6, label: 'equal-weight hold' },
+    { data: r.equity, color: '#4f9dff', width: 2.2, label: 'portfolio' },
+  ], { startLine: 10000 });
+}
+
+function runOptimize(){
+  const { sym, d } = getAsset();
+  const c = cfg();
+  log('Optimising ' + sym + ' — grid search in-sample, scored out-of-sample', '#4f9dff');
+  const t0 = performance.now();
+  const r = ENGINE.optimize(d, c, {
+    models: ['logistic','mlp'], horizons: [5,10,20,40],
+    lrs: [0.01,0.05,0.2], threshes: [0.52,0.55,0.60],
+  });
+  const ms = performance.now() - t0;
+  const rows = r.rows.slice(0, 14).map(x =>
+    '<tr><td>'+x.model+'</td><td>'+x.horizon+'</td><td>'+x.lr+'</td><td>'+x.thresh+'</td>' +
+    '<td class="'+(x.inExcess>=0?'good':'bad')+'">'+pct(x.inExcess)+'</td>' +
+    '<td class="'+(x.outExcess>=0?'good':'bad')+'">'+pct(x.outExcess)+'</td>' +
+    '<td class="mut">'+pct(x.gap)+'</td></tr>').join('');
+  $('out').innerHTML =
+    '<div id="verdict" class="warn"><span class="big">The gap is the point</span>' +
+      r.total + ' configurations scored in-sample, then re-run out-of-sample. ' +
+      r.outBeats + ' of ' + r.total + ' actually beat buy-and-hold out-of-sample. ' +
+      'Best in-sample: ' + r.best.model + ' h=' + r.best.horizon + ' lr=' + r.best.lr +
+      ' th=' + r.best.thresh + ' with in-sample excess ' + pct(r.best.inExcess) +
+      ' but out-of-sample ' + pct(r.best.outExcess) +
+      ' — an overfitting gap of <b>' + pct(r.best.gap) + '</b>.' +
+      ' <span class="mut">(' + ms.toFixed(0) + ' ms)</span></div>' +
+    '<div class="panel"><h3>Top configurations by in-sample result</h3><div class="scroll"><table>' +
+      '<tr><th>model</th><th>h</th><th>lr</th><th>thr</th><th>in-sample</th><th>out-of-sample</th><th>gap</th></tr>' +
+      rows + '</table></div><div class="hint">A large gap means the setting was tuned to the ' +
+      'past rather than found to work. The smaller the gap, the more the result deserves trust.</div></div>' +
+    '<div class="panel" style="margin-top:14px"><h3>Log</h3><div id="log"></div></div>';
+  logEl = $('log');
+  log('  best in-sample ' + pct(r.best.inExcess) + ' -> out-of-sample ' + pct(r.best.outExcess), '#ffb454');
+  log('  ' + r.outBeats + '/' + r.total + ' configurations beat holding out-of-sample',
+      r.outBeats ? '#22c98a' : '#ff5b52');
+}
+
+function runMC(){
+  const { sym, d } = getAsset();
+  const c = cfg();
+  log('Monte Carlo on ' + sym + ' — 4000 resamples', '#4f9dff');
+  const t0 = performance.now();
+  const res = ENGINE.runSeries(d, c, null);
+  const m = ENGINE.metrics(res);
+  const mc = ENGINE.monteCarlo(res, 4000, 20260930);
+  const ms = performance.now() - t0;
+  if (!mc){ log('Not enough bars to resample.', '#ffb454'); return; }
+  // regenerate the sample for the histogram so the picture matches the numbers
+  const samples = [];
+  const rr = ENGINE.rng(20260930);
+  const eq = res.equity, rets = [];
+  for (let i = res.warmBars+1; i < eq.length; i++) rets.push(eq[i-1]>0 ? eq[i]/eq[i-1]-1 : 0);
+  for (let k = 0; k < 4000; k++){
+    let v = res.startCash;
+    for (let j = 0; j < rets.length; j++) v *= (1 + rets[Math.floor(rr()*rets.length)]);
+    samples.push(v);
+  }
+  $('out').innerHTML =
+    '<div id="verdict" class="'+(mc.probProfit>=0.5?'win':'lose')+'"><span class="big">' +
+      (mc.probProfit*100).toFixed(1) + '% of resampled paths ended profitable</span>' +
+      'The realised result (' + money(mc.actual) + ') sits at the <b>' +
+      (mc.percentileOfActual*100).toFixed(0) + 'th percentile</b> of its own bootstrap distribution. ' +
+      'Median ' + money(mc.median) + ', 5th–95th percentile ' + money(mc.p05) + ' to ' + money(mc.p95) +
+      '. The same returns in a different order give this spread — which is luck, not skill.' +
+      ' <span class="mut">(' + ms.toFixed(0) + ' ms)</span></div>' +
+    metricsGrid(Object.assign({}, m, {trades:m.trades})) +
+    '<div class="chartbox"><canvas id="chart" height="240"></canvas>' +
+    '<div class="hint">4000 bootstrap resamples of the strategy\u2019s own daily returns, ' +
+    'compounded in sampled order. Seed-fixed, so this is reproducible.</div></div>' +
+    '<div class="two"><div class="panel"><h3>Distribution</h3><table>' +
+      '<tr><th>statistic</th><th>value</th></tr>' +
+      '<tr><td>actual</td><td>'+money(mc.actual)+'</td></tr>' +
+      '<tr><td>median</td><td>'+money(mc.median)+'</td></tr>' +
+      '<tr><td>mean</td><td>'+money(mc.mean)+'</td></tr>' +
+      '<tr><td>5th percentile</td><td class="bad">'+money(mc.p05)+'</td></tr>' +
+      '<tr><td>25th percentile</td><td>'+money(mc.p25)+'</td></tr>' +
+      '<tr><td>75th percentile</td><td>'+money(mc.p75)+'</td></tr>' +
+      '<tr><td>95th percentile</td><td class="good">'+money(mc.p95)+'</td></tr>' +
+      '<tr><td>median max drawdown</td><td class="bad">'+pct(mc.ddMedian)+'</td></tr>' +
+      '</table></div><div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+  log('  profit probability ' + (mc.probProfit*100).toFixed(1) + '%', mc.probProfit>=0.5?'#22c98a':'#ff5b52');
+  drawHistogram($('chart'), samples, { actual: mc.actual, p05: mc.p05, p95: mc.p95 });
+}
+
+function runModels(){
+  const { sym, d } = getAsset();
+  const c = cfg();
+  log('Comparing models on ' + sym + ' — identical data, features and costs', '#4f9dff');
+  const out = [];
+  for (const model of ['logistic','linear','mlp']){
+    const r = ENGINE.backtest(d, Object.assign({}, c, { model, lr: model==='mlp'?0.02:c.lr }));
+    out.push({ model, r });
+    log('  ' + model.padEnd(9) + ' ' + pct(r.totalRet).padStart(8) +
+        '  excess ' + pct(r.excess).padStart(8) + '  Sharpe ' + num(r.sharpe) +
+        '  trades ' + r.trades.length, r.beatBench?'#22c98a':'#ff5b52');
+  }
+  const win = out.filter(o => o.r.beatBench).length;
+  $('out').innerHTML =
+    '<div id="verdict" class="'+(win?'win':'lose')+'"><span class="big">' +
+      win + ' of ' + out.length + ' models beat buy-and-hold</span>' +
+      'Same features, same costs, same bars — only the model differs. A more complex model ' +
+      'is not automatically better; that is what this table is for.</div>' +
+    '<div class="panel"><h3>Model comparison</h3><table>' +
+      '<tr><th>model</th><th>return</th><th>excess</th><th>Sharpe</th><th>max DD</th>' +
+      '<th>trades</th><th>hit rate</th><th>exposure</th></tr>' +
+      out.map(o => '<tr><td>'+o.model+'</td>' +
+        '<td class="'+(o.r.totalRet>=0?'good':'bad')+'">'+pct(o.r.totalRet)+'</td>' +
+        '<td class="'+(o.r.excess>=0?'good':'bad')+'">'+pct(o.r.excess)+'</td>' +
+        '<td>'+num(o.r.sharpe)+'</td><td class="bad">'+pct(o.r.maxDD)+'</td>' +
+        '<td>'+o.r.trades.length+'</td><td>'+(o.r.hitRate*100).toFixed(0)+'%</td>' +
+        '<td>'+(o.r.exposure*100).toFixed(0)+'%</td></tr>').join('') +
+      '</table></div>' +
+    '<div class="chartbox"><canvas id="chart" height="300"></canvas></div>' +
+    '<div class="two"><div class="panel"><h3>Feature influence per model</h3>' +
+      out.map(o => '<div style="margin-bottom:14px"><div class="mut" style="font-size:11px;' +
+        'margin-bottom:6px">'+o.model+'</div>' +
+        influencePanel(o.r.finalWeights, o.r.featureNames) + '</div>').join('') + '</div>' +
+    '<div class="panel"><h3>Log</h3><div id="log"></div></div></div>';
+  logEl = $('log');
+  const series = out.map((o,i) => ({ data:o.r.equity, color:COLORS[i], width:2, label:o.model }));
+  series.unshift({ data: out[0].r.bench, color:'#7a8ba3', width:1.4, label:'buy & hold' });
+  drawLines($('chart'), series, { dates: d.dates, startLine: 10000 });
+}
+
+/* ================================================================= RUN */
+function dispatch(){
+  if (busy) return;
+  busy = true;
+  setTimeout(() => {
+    try {
+      ({ backtest: runBacktest, walkforward: runWalkForward, portfolio: runPortfolio,
+         optimize: runOptimize, montecarlo: runMC, models: runModels }[tab])();
+    } catch (e) {
+      log('ERROR: ' + e.message, '#ff5b52');
+      $('out').innerHTML = '<div id="verdict" class="lose"><span class="big">Engine error</span>' +
+        esc(e.message) + '</div>';
+      logEl = $('log');
+    }
+    busy = false;
+  }, 10);
+}
+
+/* ================================================================ boot */
+(function boot(){
+  let bars = 0, src = '';
+  for (const s of SYMS){ bars += DATA[s].closes.length; src = DATA[s].source; }
+  $('dataInfo').innerHTML = SYMS.length + ' assets &middot; ' + bars.toLocaleString() +
+    ' daily bars<br>' + esc(src) + ' &middot; full OHLCV &middot; embedded offline';
+  renderTabs(); renderCfg(); resetOut();
+  $('run').addEventListener('click', dispatch);
+  $('models').addEventListener('click', () => { tab = 'models'; renderTabs(); renderCfg(); dispatch(); });
+  log('Loaded ' + SYMS.length + ' assets with full OHLCV.', '#8698ae');
+  log('Indicators: Wilder RSI(14), ATR(14), MACD(12,26,9), Bollinger %B, realised vol, volume z.', '#8698ae');
+  log('Learner: online gradient descent. Costs charged on entry and exit.', '#8698ae');
+  dispatch();
+})();
+</script>
+</body>
+</html>

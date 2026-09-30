@@ -1,0 +1,25 @@
+# Rust build output - 268 MB of it
+engine/target/
+target/
+
+# Python launcher build output
+build/
+dist/
+release/
+*.spec
+
+# binaries are release assets, not source
+*.zip
+*.exe
+
+# python
+__pycache__/
+*.pyc
+
+# a stray duplicate of the top-level files - excluded from the repo, left on disk
+/AITradingBot/
+
+# scratch extractions and backups
+assets/_*.js
+assets/_*.html
+assets/_*.txt

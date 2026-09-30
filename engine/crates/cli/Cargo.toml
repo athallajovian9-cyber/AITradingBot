@@ -1,0 +1,14 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "bot"
+path = "src/main.rs"
+
+[dependencies]
+botcore = { path = "../core" }
+model = { path = "../model" }
+feed = { path = "../feed" }
+exec = { path = "../exec" }

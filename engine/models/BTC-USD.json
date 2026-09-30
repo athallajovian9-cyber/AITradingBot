@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "trained_on": "BTC-USD 2024-09-30..2026-09-30",
+ "bars": 731,
+ "horizon": 10,
+ "features": [
+  "1-bar return",
+  "5-bar return",
+  "20-bar return",
+  "RSI(14) position",
+  "MACD histogram",
+  "Bollinger %B",
+  "SMA20-50 trend",
+  "Volatility ratio",
+  "Volume z-score",
+  "Range position"
+ ],
+ "model": {
+  "kind": "logistic",
+  "weights": [
+   -0.05234142800577613,
+   0.07913996089976363,
+   0.06782121216507687,
+   -0.04325588410801911,
+   -0.028978497259365084,
+   -0.29220201606268714,
+   0.04972285389285905,
+   -0.5708510316903768,
+   -0.07902233395430157,
+   0.025037462137762496
+  ],
+  "bias": -0.1624004894171938
+ }
+}

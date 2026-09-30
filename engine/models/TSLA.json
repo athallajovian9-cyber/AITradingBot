@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "trained_on": "TSLA 2024-09-30..2026-09-29",
+ "bars": 501,
+ "horizon": 10,
+ "features": [
+  "1-bar return",
+  "5-bar return",
+  "20-bar return",
+  "RSI(14) position",
+  "MACD histogram",
+  "Bollinger %B",
+  "SMA20-50 trend",
+  "Volatility ratio",
+  "Volume z-score",
+  "Range position"
+ ],
+ "model": {
+  "kind": "logistic",
+  "weights": [
+   -0.05305332707157318,
+   0.011369213992869817,
+   0.1653327723319842,
+   -0.002298811309953161,
+   -0.04075368784334855,
+   0.05487190582620213,
+   -0.0714860222079995,
+   0.36633931646799966,
+   -0.07158804617150107,
+   0.20593459752263427
+  ],
+  "bias": -0.08270406073544995
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "trained_on": "TLT 2024-09-30..2026-09-29",
+ "bars": 501,
+ "horizon": 10,
+ "features": [
+  "1-bar return",
+  "5-bar return",
+  "20-bar return",
+  "RSI(14) position",
+  "MACD histogram",
+  "Bollinger %B",
+  "SMA20-50 trend",
+  "Volatility ratio",
+  "Volume z-score",
+  "Range position"
+ ],
+ "model": {
+  "kind": "logistic",
+  "weights": [
+   0.02402423490870654,
+   0.2035642110646833,
+   -0.30748252389675,
+   -0.17086077212369383,
+   -0.020459438877299632,
+   -0.518203607777971,
+   -0.3470551223226128,
+   0.22323522437404722,
+   -0.1485019715254724,
+   -0.009786268954120327
+  ],
+  "bias": -0.04551619472051029
+ }
+}

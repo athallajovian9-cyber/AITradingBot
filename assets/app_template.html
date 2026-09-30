@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Trading Bot — Honest Backtester</title>
+<style>
+  :root{
+    --bg:#0b0f16; --panel:#141c28; --panel2:#0f1621; --line:#243244;
+    --fg:#e8eef7; --dim:#8fa3ba; --acc:#4f9dff; --good:#25c98a; --bad:#ff5f56;
+    --warn:#ffb454; --gold:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px}
+  header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+  h1{margin:0 0 6px;font-size:21px;letter-spacing:.01em}
+  .sub{color:var(--dim);font-size:13px;max-width:760px}
+  .sub b{color:var(--gold)}
+  .grid{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .panel h2,.panel h3{margin:0 0 12px;font-size:13px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--dim)}
+  label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px}
+  label:first-of-type{margin-top:0}
+  select,input[type=range]{width:100%}
+  select{padding:8px;border-radius:7px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--fg);font:inherit}
+  input[type=range]{accent-color:var(--acc);margin:4px 0 0}
+  .val{float:right;color:var(--acc);font-variant-numeric:tabular-nums}
+  button{width:100%;margin-top:16px;padding:12px;border:none;border-radius:8px;
+    background:var(--acc);color:#04121f;font:inherit;font-weight:700;cursor:pointer}
+  button:hover{filter:brightness(1.1)}
+  button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line);
+    font-weight:400;margin-top:8px;padding:8px}
+  /* verdict */
+  #verdict{border-radius:12px;padding:14px 16px;margin-bottom:16px;
+    border:1px solid var(--line);background:var(--panel);font-size:15px}
+  #verdict.win{border-color:var(--good);background:rgba(37,201,138,.09)}
+  #verdict.lose{border-color:var(--bad);background:rgba(255,95,86,.08)}
+  #verdict .big{font-weight:700;font-size:17px;display:block;margin-bottom:4px}
+  /* metrics */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  @media(max-width:880px){.metrics{grid-template-columns:repeat(2,1fr)}}
+  .m{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px}
+  .m .k{font-size:10.5px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+  .m .v{font-size:17px;font-weight:700;margin-top:3px;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .good{color:var(--good)} .bad{color:var(--bad)} .mut{color:var(--dim)}
+  /* chart */
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px;margin-bottom:16px}
+  canvas{width:100%;display:block;border-radius:6px}
+  /* weights */
+  .wrow{display:grid;grid-template-columns:150px 1fr 62px;gap:10px;
+    align-items:center;margin-bottom:7px;font-size:12px}
+  .wbar{height:9px;background:var(--panel2);border-radius:5px;overflow:hidden;position:relative}
+  .wbar i{position:absolute;top:0;bottom:0;left:50%;background:var(--acc);border-radius:4px}
+  .wbar i.neg{background:var(--bad)}
+  .wval{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+  /* log */
+  #log{background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    height:150px;overflow-y:auto;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
+    padding:10px}
+  #log div{margin-bottom:3px}
+  .hint{color:var(--dim);font-size:12px;margin-top:10px;line-height:1.6}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:880px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI Trading Bot &mdash; Honest Backtester</h1>
+    <p class="sub">Real historical prices, real indicators, a real learner with weights you can
+      watch update, and <b>costs charged on every fill</b>. Buy-and-hold is always drawn
+      alongside, so whether the bot has any skill is a question the screen answers rather
+      than asserts. <b>Nothing here predicts the future &mdash; it measures the past.</b></p>
+  </header>
+
+  <div class="grid">
+    <!-- ---------------- controls ---------------- -->
+    <div class="panel">
+      <h2>Configuration</h2>
+
+      <label for="series">Market</label>
+      <select id="series"></select>
+
+      <label for="strategy">Strategy</label>
+      <select id="strategy">
+        <option value="learner" selected>Learner (logistic, online)</option>
+        <option value="momentum">Momentum (trend + 5-bar)</option>
+        <option value="meanrev">Mean reversion (RSI &lt; 35)</option>
+        <option value="buyhold">Buy and hold</option>
+        <option value="flat">Stay flat (control)</option>
+      </select>
+
+      <label for="horizon">Forecast horizon <span class="val" id="horizonV">20 bars</span></label>
+      <input type="range" id="horizon" min="1" max="40" value="20">
+
+      <label for="lr">Learning rate <span class="val" id="lrV">0.02</span></label>
+      <input type="range" id="lr" min="1" max="20" value="2">
+
+      <label for="thresh">Confidence to go long <span class="val" id="threshV">55%</span></label>
+      <input type="range" id="thresh" min="50" max="75" value="55">
+
+      <label for="fee">Commission <span class="val" id="feeV">10 bps</span></label>
+      <input type="range" id="fee" min="0" max="40" value="10">
+
+      <label for="slip">Slippage <span class="val" id="slipV">5 bps</span></label>
+      <input type="range" id="slip" min="0" max="40" value="5">
+
+      <button id="run">Run backtest</button>
+      <button class="ghost" id="sweep">Sweep every setting</button>
+    </div>
+
+    <!-- ---------------- results ---------------- -->
+    <div>
+      <div id="verdict">&nbsp;</div>
+      <div class="metrics" id="metrics"></div>
+
+      <div class="chartbox">
+        <canvas id="chart" height="300"></canvas>
+        <div class="hint" id="chartHint"></div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <h3>What the learner actually learned</h3>
+          <div id="weights"></div>
+          <div class="hint">These are live coefficients. Each bar is a weight the model
+            moved by gradient descent. <b>Zero on a bar means the model found no
+            information there.</b></div>
+        </div>
+        <div class="panel">
+          <h3>Run log</h3>
+          <div id="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>/*__ENGINE__*/</script>
+<script>/*__DATA__*/</script>
+<script>
+'use strict';
+
+const FEATS = ['1-bar return','5-bar return','RSI(14) position','MACD histogram','SMA20-50 trend'];
+const FILES = [
+  {id:'BTC',  color:'#f7931a'},
+  {id:'AAPL', color:'#4f9dff'},
+  {id:'SPY',  color:'#25c98a'},
+  {id:'NVDA', color:'#a97bff'},
+];
+
+let chart = null;
+let last  = null;
+
+/* ------------------------------------------------------------ helpers */
+const $ = id => document.getElementById(id);
+const pct = x => (x*100 >= 0 ? '+' : '') + (x*100).toFixed(2) + '%';
+const money = x => '$' + x.toLocaleString(undefined,{maximumFractionDigits:0});
+
+function log(msg, color){
+  const d = document.createElement('div');
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  if (color) d.style.color = color;
+  const l = $('log'); l.appendChild(d); l.scrollTop = l.scrollHeight;
+}
+
+function fillSeries(){
+  const s = $('series');
+  s.innerHTML = '';
+  for (const f of FILES){
+    const v = DATA[f.id];
+    const o = document.createElement('option');
+    o.value = f.id;
+    const ch = (v.closes[v.closes.length-1]/v.closes[0]-1)*100;
+    o.textContent = f.id + ' — ' + v.name + '  (' + v.dates[0] + '→' + v.dates[v.dates.length-1] +
+                    ', ' + (ch>=0?'+':'') + ch.toFixed(0) + '%)';
+    s.appendChild(o);
+  }
+}
+
+/* -------------------------------------------------------------- chart
+   Drawn by hand on canvas. The original page pulled Chart.js from a CDN;
+   this has no external requests, so it works offline and cannot fail to load.
+*/
+function drawChart(bot, bench, dates, color){
+  const cv = $('chart');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.clientWidth, H = 300;
+  cv.width = Math.floor(W*dpr); cv.height = Math.floor(H*dpr);
+  cv.style.height = H + 'px';
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,W,H);
+
+  const padL = 66, padR = 12, padT = 14, padB = 26;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const n = bot.length;
+  let lo = Infinity, hi = -Infinity;
+  for (let i=0;i<n;i++){ lo = Math.min(lo, bot[i], bench[i]); hi = Math.max(hi, bot[i], bench[i]); }
+  const padv = (hi-lo)*0.06 || 1; lo -= padv; hi += padv;
+  const X = i => padL + (i/(n-1))*iw;
+  const Y = v => padT + (1 - (v-lo)/(hi-lo))*ih;
+
+  // grid + y labels
+  c.strokeStyle = '#1d2836'; c.fillStyle = '#8fa3ba';
+  c.font = '11px ui-monospace,monospace'; c.textAlign = 'right';
+  for (let k=0;k<=4;k++){
+    const v = lo + (hi-lo)*k/4, y = Y(v);
+    c.beginPath(); c.moveTo(padL,y); c.lineTo(W-padR,y); c.stroke();
+    c.fillText('$'+Math.round(v).toLocaleString(), padL-8, y+4);
+  }
+  // x labels
+  c.textAlign = 'center';
+  for (let k=0;k<=4;k++){
+    const i = Math.round((n-1)*k/4);
+    c.fillText((dates && dates[Math.round(i*(dates.length-1)/(n-1))]) || '', X(i), H-8);
+  }
+  // start line
+  c.strokeStyle = '#2c3a4d'; c.setLineDash([4,4]);
+  c.beginPath(); c.moveTo(padL, Y(bot[0])); c.lineTo(W-padR, Y(bot[0])); c.stroke();
+  c.setLineDash([]);
+
+  const line = (arr, col, w2) => {
+    c.strokeStyle = col; c.lineWidth = w2; c.beginPath();
+    for (let i=0;i<n;i++){ const x=X(i), y=Y(arr[i]); i?c.lineTo(x,y):c.moveTo(x,y); }
+    c.stroke();
+  };
+  line(bench, '#7a8ba3', 1.6);         // benchmark first (behind)
+  line(bot, color, 2.2);
+
+  // legend
+  c.textAlign='left'; c.font='12px system-ui,sans-serif';
+  c.fillStyle = color; c.fillRect(padL, 4, 12, 3);
+  c.fillStyle = '#e8eef7'; c.fillText('bot', padL+17, 8);
+  c.fillStyle = '#7a8ba3'; c.fillRect(padL+56, 4, 12, 3);
+  c.fillStyle = '#8fa3ba'; c.fillText('buy & hold', padL+73, 8);
+}
+
+/* ------------------------------------------------------------- metrics */
+function renderMetrics(r){
+  const box = $('metrics');
+  const cls = v => v >= 0 ? 'good' : 'bad';
+  const rows = [
+    ['Bot return',    pct(r.totalRet),  cls(r.totalRet)],
+    ['Buy & hold',    pct(r.benchRet),  cls(r.benchRet)],
+    ['Excess',        pct(r.excess),    cls(r.excess)],
+    ['Trades',        String(r.trades.length), 'mut'],
+    ['Hit rate',      (r.hitRate*100).toFixed(1)+'%', r.hitRate>0.5?'good':'bad'],
+    ['Max drawdown',  pct(r.maxDD),     'bad'],
+    ['Costs paid',    money(r.feesPaid),'mut'],
+    ['Sharpe (ann.)', r.sharpe.toFixed(2), cls(r.sharpe)],
+  ];
+  box.innerHTML = rows.map(([k,v,c]) =>
+    '<div class="m"><div class="k">'+k+'</div><div class="v '+c+'">'+v+'</div></div>').join('');
+}
+
+function renderWeights(r){
+  const w = r.finalWeights || [];
+  let mx = 0.0001;
+  for (const v of w) mx = Math.max(mx, Math.abs(v));
+  $('weights').innerHTML = w.map((v,i) => {
+    const pc = Math.min(50, Math.abs(v)/mx*50);
+    const cls = v >= 0 ? '' : 'neg';
+    return '<div class="wrow"><span>'+FEATS[i]+'</span>' +
+      '<span class="wbar"><i class="'+cls+'" style="width:'+pc+'%;' +
+      (v>=0 ? 'left:50%' : 'left:'+(50-pc)+'%;width:'+pc+'%') + '"></i></span>' +
+      '<span class="wval">'+v.toFixed(3)+'</span></div>';
+  }).join('');
+}
+
+/* ---------------------------------------------------------------- run */
+function params(){
+  return {
+    strategy: $('strategy').value,
+    horizon: +$('horizon').value,
+    lr: +$('lr').value / 100,
+    thresh: +$('thresh').value / 100,
+    feeBps: +$('fee').value,
+    slipBps: +$('slip').value,
+  };
+}
+
+function run(){
+  const id = $('series').value, d = DATA[id], p = params();
+  log('Backtest ' + id + ' — ' + p.strategy + ', horizon ' + p.horizon +
+      ' bars, costs ' + (p.feeBps+p.slipBps) + ' bps', '#4f9dff');
+
+  const t0 = performance.now();
+  let r;
+  try { r = ENGINE.backtest(d.closes, p); }
+  catch(e){ log('engine error: ' + e.message, '#ff5f56'); return; }
+  const ms = performance.now() - t0;
+  last = r;
+
+  const color = (FILES.find(f=>f.id===id)||{}).color || '#4f9dff';
+  drawChart(r.equity, r.bench, d.dates, color);
+  renderMetrics(r); renderWeights(r);
+
+  const win = r.beatBench;
+  const v = $('verdict');
+  v.className = win ? 'win' : 'lose';
+  v.innerHTML = '<span class="big">' +
+    (win ? '&#9989; The bot beat buy-and-hold' : '&#10060; The bot lost to buy-and-hold') +
+    '</span>' +
+    'Bot ' + pct(r.totalRet) + ' versus holding ' + pct(r.benchRet) +
+    ' over ' + r.n + ' bars — an excess of <b>' + pct(r.excess) + '</b>. ' +
+    (win
+      ? 'That is on one historical window, at one setting. It is not evidence it will repeat.'
+      : 'It traded ' + r.trades.length + ' times, paid ' + money(r.feesPaid) +
+        ' in costs, and was in the market only part of the time.') +
+    ' <span class="mut">(' + ms.toFixed(0) + ' ms)</span>';
+
+  $('chartHint').textContent =
+    'Equity from ' + money(10000) + ', both starting at the same bar with the same ' +
+    'entry cost. ' + d.source + ', ' + d.dates[0] + ' to ' + d.dates[d.dates.length-1] +
+    (r.openPos ? '  ·  a position is still open at the end (marked to market, not sold).' : '');
+  log('  bot ' + pct(r.totalRet) + '  hold ' + pct(r.benchRet) +
+      '  excess ' + pct(r.excess) + '  ' + r.trades.length + ' trades  ' +
+      (win?'BEAT':'lost'), win?'#25c98a':'#ff5f56');
+}
+
+/* -------------------------------------------------------------- sweep
+   Runs every combination so one lucky setting cannot be mistaken for an edge.
+*/
+function sweep(){
+  const id = $('series').value, d = DATA[id];
+  log('Sweeping all settings on ' + id + ' ...', '#ffb454');
+  const found = [];
+  for (const strategy of ['learner','momentum','meanrev']){
+    for (const horizon of [1,5,10,20,40]){
+      for (const lrv of [1,2,5,10]){
+        const p = params();
+        p.strategy = strategy; p.horizon = horizon; p.lr = lrv/100;
+        const r = ENGINE.backtest(d.closes, p);
+        found.push({strategy,horizon,lr:lrv/100,excess:r.excess,beat:r.beatBench});
+      }
+    }
+  }
+  found.sort((a,b)=>b.excess-a.excess);
+  const beats = found.filter(f=>f.beat).length;
+  log('  ran ' + found.length + ' configurations; ' + beats + ' beat buy-and-hold', '#ffb454');
+  const top = found[0], bot = found[found.length-1];
+  log('  best : ' + top.strategy + ' h=' + top.horizon + ' lr=' + top.lr +
+      '  -> ' + pct(top.excess), '#25c98a');
+  log('  worst: ' + bot.strategy + ' h=' + bot.horizon + ' lr=' + bot.lr +
+      '  -> ' + pct(bot.excess), '#ff5f56');
+  if (beats === 0){
+    log('  no configuration beat holding. On these series the honest answer is that', '#8fa3ba');
+    log('  simple technical signals did not overcome costs and lost drift.', '#8fa3ba');
+  } else {
+    log('  ' + beats + '/' + found.length + ' beat holding — a minority, which is what',
+        '#8fa3ba');
+    log('  you would expect if there is no reliable edge here.', '#8fa3ba');
+  }
+}
+
+/* --------------------------------------------------------------- wire */
+function syncLabels(){
+  $('horizonV').textContent = $('horizon').value + ' bars';
+  $('lrV').textContent = (+$('lr').value/100).toFixed(2);
+  $('threshV').textContent = $('thresh').value + '%';
+  $('feeV').textContent = $('fee').value + ' bps';
+  $('slipV').textContent = $('slip').value + ' bps';
+}
+
+fillSeries();
+syncLabels();
+['horizon','lr','thresh','fee','slip'].forEach(id =>
+  $(id).addEventListener('input', syncLabels));
+$('run').addEventListener('click', run);
+$('sweep').addEventListener('click', sweep);
+$('strategy').addEventListener('change', run);
+$('series').addEventListener('change', run);
+
+log('Loaded ' + Object.keys(DATA).length + ' real market series.', '#8fa3ba');
+log('Indicators: RSI(14) Wilder, MACD(12,26,9), SMA 20/50. Costs charged per fill.', '#8fa3ba');
+log('Buy-and-hold is always computed on the same path.', '#8fa3ba');
+run();
+</script>
+</body>
+</html>

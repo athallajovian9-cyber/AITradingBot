@@ -1,0 +1,34 @@
+{
+ "version": 1,
+ "trained_on": "MSFT 2024-09-30..2026-09-29",
+ "bars": 501,
+ "horizon": 10,
+ "features": [
+  "1-bar return",
+  "5-bar return",
+  "20-bar return",
+  "RSI(14) position",
+  "MACD histogram",
+  "Bollinger %B",
+  "SMA20-50 trend",
+  "Volatility ratio",
+  "Volume z-score",
+  "Range position"
+ ],
+ "model": {
+  "kind": "logistic",
+  "weights": [
+   -0.0759899929108295,
+   -0.02176717685317432,
+   0.15728220421785213,
+   0.17973289296080328,
+   -0.12412363745938816,
+   -0.044386632207602444,
+   0.5341834140080525,
+   -0.3644214683233902,
+   -0.33451570247780843,
+   0.022747646758365186
+  ],
+  "bias": -0.034168215791291597
+ }
+}
